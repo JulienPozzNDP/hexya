@@ -225,7 +225,7 @@ import (
 
 func init() {
     pool.OpenAcademyCourse().DeclareModel()
-    pool.OpenAcademyCourse().AddFields(map[string]models.FieldDeclaration{
+    pool.OpenAcademyCourse().AddFields(map[string]models.FieldDefinition{
         "Name":        models.CharField{},
         "Description": models.TextField{},
     })
@@ -603,7 +603,7 @@ func init() { // <1>
     pool.OpenAcademySession().AddFields(map[string]models.FieldDeclaration{
         "Name":      models.CharField{Required: true},
         "StartDate": models.DateField{},
-        "Duration":  models.FloatField{Digits: types.Digits{Precision: 6, Scale: 2},
+        "Duration":  models.FloatField{Digits: nbutils.Digits{Precision: 6, Scale: 2},
             Help: "Duration in days"},
         "Seats":     models.IntegerField{String: "Number of seats"},
         "State":     models.SelectionField{
@@ -1005,7 +1005,7 @@ func init() {
             <notebook position="inside">
                 <page string="Sessions">
                     <group>
-                        <field name="Instructore"/>
+                        <field name="Instructor"/>
                         <field name="Sessions"/>
                     </group>
                 </page>
@@ -1205,7 +1205,7 @@ func init() {
 (...)
     "StartDate": models.DateField{
         Default: func(env models.Environment, fMap models.FieldMap) interface{} {
-                return types.Today()
+                return dates.Today()
             },
         },
 (...)
@@ -1250,11 +1250,11 @@ func init() {
         `VerifyValidSeats checks that the number of seats is positive
         and resets it to zero otherwise`,
         func (rs pool.OpenAcademySessionSet) (*pool.OpenAcademySessionData, []models.FieldNamer) {
-            var res pool.OpenAcademySessionData
-            if rs.Seats() < 0 {
-                res.Seats = 0
-            }
-            return &res, []models.FieldNamer{pool.OpenAcademySession().Seats()}
+           var res pool.OpenAcademySessionData
+           if rs.Seats() < 0 {
+		return &pool.OpenAcademySessionData{Seats: 0,}, []models.FieldNamer{pool.OpenAcademySession().Seats()}
+	   }
+	   return &pool.OpenAcademySessionData{}, []models.FieldNamer{}
         })
 (...)
 }
@@ -1336,11 +1336,11 @@ in the attendees of his/her own session.
 
 (...)
 
-    pool.Methods().CheckInstructorNotInAttendees().DeclareMethod(
+    pool.OpenAcademySession().Methods().CheckInstructorNotInAttendees().DeclareMethod(
         `CheckInstructorNotInAttendees checks that the instructor is not present
         in the attendees of his/her own session`,
         func(rs pool.OpenAcademySessionSet) {
-            for _, attendee := range rs.Attendees() {
+            for _, attendee := range rs.Attendees().Records() {
                 if attendee.ID() == rs.Instructor().ID() {
                     panic("The session's instructor can't be an attendee of his own session")
                 }
@@ -1638,7 +1638,7 @@ Let's make the `TakenSeats` readable only by managers:
 ----
 func init() {
     (...)
-    pool.OpenAcademySession().Fields().TakenSeats().RevokeAccess(security.GroupEveryOne, security.Read|security.Write)
+    pool.OpenAcademySession().Fields().TakenSeats().RevokeAccess(security.GroupEveryone, security.Read|security.Write)
     pool.OpenAcademySession().Fields().TakenSeats().GrantAccess(Manager, security.Read)
     (...)
 }
